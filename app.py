@@ -8,13 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Проверка токена
 if not TOKEN:
-    raise ValueError("Ошибка: не найден BOT_TOKEN! Проверь .env файл или Secrets в Replit.")
+    raise ValueError("Ошибка: BOT_TOKEN не найден! Проверь .env файл или Secrets в Replit.")
 
-# Файл с приветствием
 WELCOME_FILE = "welcome.txt"
-
 
 def load_welcome_message():
     """Загружает приветственное сообщение из файла."""
@@ -34,22 +31,25 @@ async def greet_user(update: Update, context):
 
 
 async def run_bot():
-    """Запускает Telegram-бота в режиме polling."""
+    """Запускает бота, не закрывая event loop в Replit."""
     bot = Application.builder().token(TOKEN).build()
-
-    # Добавляем обработчик для новых участников
     bot.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, greet_user))
 
     print("Бот запущен!")
 
-    # Запуск polling без закрытия event loop (важно для Replit)
-    await bot.run_polling()
+    await bot.initialize()
+    await bot.start()
+    await bot.updater.start_polling()
+
+    # Держим бота активным (loop.run_forever() нельзя в Replit)
+    await asyncio.Event().wait()
 
 
-if __name__ == '__main__':
+# Запуск без конфликта с Replit
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+
     try:
-        loop = asyncio.get_event_loop()
-        loop.create_task(run_bot())
-        loop.run_forever()  # Бесконечный цикл для работы бота
-    except KeyboardInterrupt:
-        print("Бот остановлен!")
+        loop.run_until_complete(run_bot())  # Запуск без закрытия loop
+    except RuntimeError:
+        loop.create_task(run_bot())  # Если loop уже работает, создаём задачу
