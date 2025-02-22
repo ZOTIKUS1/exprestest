@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
+# Проверка токена
+if not TOKEN:
+    raise ValueError("Ошибка: не найден BOT_TOKEN! Проверь .env файл или Secrets в Replit.")
+
 # Файл с приветствием
 WELCOME_FILE = "welcome.txt"
 
@@ -29,7 +33,7 @@ async def greet_user(update: Update, context):
         await update.message.reply_text(welcome_message.format(name=member.full_name))
 
 
-async def main():
+async def run_bot():
     """Запускает Telegram-бота в режиме polling."""
     bot = Application.builder().token(TOKEN).build()
 
@@ -38,10 +42,14 @@ async def main():
 
     print("Бот запущен!")
 
-    # Запуск polling (бот сам проверяет обновления)
+    # Запуск polling без закрытия event loop (важно для Replit)
     await bot.run_polling()
 
 
-# Запуск асинхронного цикла
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(run_bot())
+        loop.run_forever()  # Бесконечный цикл для работы бота
+    except KeyboardInterrupt:
+        print("Бот остановлен!")
